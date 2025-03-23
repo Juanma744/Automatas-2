@@ -1,3 +1,5 @@
+import re
+
 class Gramatica:
     def __init__(self):
         # Definimos las reglas de la gramática
@@ -25,6 +27,13 @@ class Gramatica:
             "R": [">", "<", "=", "!"]
         }
 
+        # Definimos los tokens reconocidos por la gramática
+        self.tokens_reconocidos = {
+            "Start", "End", "Entero", "Doble", "Cadena", "Salida", "Entrada",
+            "Mientras", "Si", "SiNo", "FinSi", "FinMientras", "var", "num",
+            "+", "-", "*", "/", "=", ">", "<", ">=", "<=", "!=", "(", ")", "{", "}", ",", ";", ":"
+        }
+
     def obtener_gramatica(self):
         """
         Devuelve las reglas de la gramática.
@@ -34,10 +43,24 @@ class Gramatica:
     def obtener_reglas_aplicadas(self, codigo):
         """
         Analiza el código y devuelve las reglas de la gramática aplicadas.
+        También detecta palabras no reconocidas.
         """
         reglas_aplicadas = []
+        palabras_no_reconocidas = set()
 
-        # Ejemplo de análisis (esto es simplificado, puedes mejorarlo)
+        # Dividir el código en palabras y símbolos
+        palabras = re.findall(r'\b\w+\b|[^\w\s]', codigo)
+
+        # Verificar cada palabra o símbolo
+        for palabra in palabras:
+            if palabra not in self.tokens_reconocidos and not self.es_variable_o_numero(palabra):
+                palabras_no_reconocidas.add(palabra)
+
+        # Mostrar palabras no reconocidas
+        if palabras_no_reconocidas:
+            reglas_aplicadas.append(f"Palabras no reconocidas: {', '.join(palabras_no_reconocidas)}")
+
+        # Reglas aplicadas (como antes)
         if "Start" in codigo and "End" in codigo:
             reglas_aplicadas.append("S → Inicio A Fin")
 
@@ -67,3 +90,9 @@ class Gramatica:
             reglas_aplicadas.append("H → Si(N) {A} Q")
 
         return reglas_aplicadas
+
+    def es_variable_o_numero(self, palabra):
+        """
+        Verifica si una palabra es una variable o un número.
+        """
+        return re.match(r'^[a-zA-Z_]\w*$', palabra) or re.match(r'^\d+$', palabra) or re.match(r'^\d+\.\d+$', palabra)

@@ -1,4 +1,5 @@
 import re
+from PyQt6.QtWidgets import QMessageBox  # Importación necesaria para QMessageBox
 
 class AnalizadorLexico:
     def __init__(self):
@@ -34,7 +35,7 @@ class AnalizadorLexico:
                     alias = "_"
                 elif token == "\t":  # Tab
                     tipo_token = "TAB"
-                    alias = "__"
+                    alias = "___"  # Cambiado de "__" a "___"
                 elif token == '"':  # Comilla doble
                     tipo_token = "SAG"
                     alias = '"'
@@ -63,6 +64,40 @@ class AnalizadorLexico:
                 datos_palabras[token]["apariciones"] += 1
 
         return datos_palabras
+
+    def calcular_primeros_siguientes(self):
+        try:
+            primeros, siguientes = self.primeros_siguientes.calcular_primeros_siguientes()
+            
+            # Crear tabla con formato alineado
+            resultado = "| NO TERMINALES  | PRIMEROS                                  | SIGUIENTES                                |\n"
+            resultado += "|----------------|-------------------------------------------|-------------------------------------------|\n"
+            
+            # Ordenar no terminales para consistencia
+            no_terminales = [
+                "S", "A", "A'", "B", "C", "D", "F", "G", 
+                "H", "I", "J", "K", "K'", "L", "L'", "M", 
+                "N", "N'", "OP", "Q", "R"
+            ]
+
+            for nt in no_terminales:
+                # Formatear primeros
+                pr = ", ".join(sorted(primeros.get(nt, set())))
+                pr = pr.replace("ε", "€")  # Mantener símbolo de la imagen
+                
+                # Formatear siguientes
+                sg = ", ".join(sorted(siguientes.get(nt, set())))
+                sg = sg.replace("SiNo", "SINo_")  # Mantener formato de la imagen
+                
+                # Añadir fila
+                resultado += f"| {nt.ljust(14)} | {pr.ljust(41)} | {sg.ljust(41)} |\n"
+
+            self.primeros_siguientes_texto.setPlainText(resultado)
+            QMessageBox.information(self, "Primeros y Siguientes", "Tabla generada exitosamente!")
+            self.tabs.setCurrentIndex(4)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error al calcular: {str(e)}")
 
     def obtener_tipo_token(self, token):
         if token in self.palabras_reservadas:

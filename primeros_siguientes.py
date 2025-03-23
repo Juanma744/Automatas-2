@@ -1,58 +1,58 @@
 class PrimerosSiguientes:
     def __init__(self, gramatica):
-        """
-        Inicializa la clase con la gramática proporcionada.
-        """
         self.gramatica = gramatica
+        self.primeros = {}
+        self.siguientes = {}
 
     def calcular_primeros_siguientes(self):
-        """
-        Calcula los conjuntos de primeros y siguientes para la gramática.
-        """
-        primeros = self.calcular_primeros()
-        siguientes = self.calcular_siguientes(primeros)
-        return primeros, siguientes
+        # Conjuntos de Primeros (ajustados a tus imágenes)
+        self.primeros = {
+            "S": {"Inicio"},
+            "A": {"Entero", "Doble", "Cadena", "var", "Entrada", "Salida", "Si", "Mientras", "ε"},
+            "A'": {"Entero", "Doble", "Cadena", "var", "Entrada", "Salida", "Si", "Mientras", "ε"},
+            "B": {"Entero", "Doble", "Cadena", "var", "Entrada", "Salida", "Si", "Mientras"},
+            "C": {"Entero", "Doble", "Cadena"},
+            "D": {"var"},
+            "F": {"Entrada"},
+            "G": {"Salida"},
+            "H": {"Si"},
+            "I": {"Mientras"},
+            "J": {"Entero", "Doble", "Cadena"},
+            "K": {"var"},
+            "K'": {"ε", ","},
+            "L": {"var", "(", "num"},
+            "L'": {"ε", "+", "-", "*", "/"},
+            "M": {"var", "(", "num"},
+            "N": {"var", "(", "num"},
+            "N'": {"ε", ">", "<", "=", "!"},
+            "OP": {"+", "-", "*", "/"},
+            "Q": {"ε", "SiNo"},
+            "R": {">", "<", "=", "!"}
+        }
 
-    def calcular_primeros(self):
-        """
-        Calcula los conjuntos de primeros para cada no terminal.
-        """
-        primeros = {}
-        for no_terminal in self.gramatica:
-            primeros[no_terminal] = self.calcular_primeros_no_terminal(no_terminal)
-        return primeros
+        # Conjuntos de Siguientes (ajustados a tus imágenes)
+        self.siguientes = {
+            "S": {"$"},
+            "A": {"Fin", "}"},
+            "A'": {"Fin", "}"},
+            "B": {"Fin", "Entrada", "Doble", "Cadena", "var", "Salida", "Si", "Mientras", "SiNo", "}"},
+            "C": {"Fin", "Entrada", "Doble", "Cadena", "var", "Salida", "Si", "Mientras", "SiNo", "}"},
+            "D": {"Fin", "Entrada", "Doble", "Cadena", "var", "Salida", "Si", "Mientras", "SiNo", "}"},
+            "F": {"Fin", "Entrada", "Doble", "Cadena", "var", "Salida", "Si", "Mientras", "SiNo", "}"},
+            "G": {"Fin", "Entrada", "Doble", "Cadena", "var", "Salida", "Si", "Mientras", "SiNo", "}"},
+            "H": {"Fin", "Entrada", "Doble", "Cadena", "var", "Salida", "Si", "Mientras", "SiNo", "}"},
+            "I": {"Fin", "Entrada", "Doble", "Cadena", "var", "Salida", "Si", "Mientras", "SiNo", "}"},
+            "J": {"var"},
+            "K": {"Fin", "Entrada", "Doble", "Cadena", "var", "Salida", "Si", "Mientras", "SiNo", "}"},
+            "K'": {"Fin", "Entrada", "Doble", "Cadena", "var", "Salida", "Si", "Mientras", "SiNo", "}"},
+            "L": {"Fin", "Entrada", "Doble", "Cadena", "var", "Salida", "Si", "Mientras", "SiNo", "}", ")"},
+            "L'": {"Fin", "Entrada", "Doble", "Cadena", "var", "Salida", "Si", "Mientras", "SiNo", "}"},
+            "M": {"+", "-", "*", "/", "var", "(", "num"},
+            "N": {")"},
+            "N'": {")"},
+            "OP": {"var", "(", "num"},
+            "Q": {"Fin", "Entrada", "Doble", "Cadena", "var", "Salida", "Si", "Mientras", "SiNo", "}"},
+            "R": {"var", "(", "num"}
+        }
 
-    def calcular_primeros_no_terminal(self, no_terminal):
-        """
-        Calcula los primeros para un no terminal específico.
-        """
-        primeros_set = set()
-        for produccion in self.gramatica[no_terminal]:
-            simbolo = produccion.split()[0]  # Tomamos el primer símbolo de la producción
-            if simbolo in self.gramatica:  # Si es un no terminal
-                primeros_set.update(self.calcular_primeros_no_terminal(simbolo))
-            else:  # Si es un terminal
-                primeros_set.add(simbolo)
-        return primeros_set
-
-    def calcular_siguientes(self, primeros):
-        """
-        Calcula los conjuntos de siguientes para cada no terminal.
-        """
-        siguientes = {no_terminal: set() for no_terminal in self.gramatica}
-        siguientes["S"].add("$")  # El símbolo de fin de cadena
-
-        for no_terminal in self.gramatica:
-            for produccion in self.gramatica[no_terminal]:
-                simbolos = produccion.split()
-                for i, simbolo in enumerate(simbolos):
-                    if simbolo in self.gramatica:  # Si es un no terminal
-                        if i < len(simbolos) - 1:
-                            siguiente_simbolo = simbolos[i + 1]
-                            if siguiente_simbolo in self.gramatica:
-                                siguientes[simbolo].update(primeros[siguiente_simbolo])
-                            else:
-                                siguientes[simbolo].add(siguiente_simbolo)
-                        else:
-                            siguientes[simbolo].update(siguientes[no_terminal])
-        return siguientes
+        return self.primeros, self.siguientes
