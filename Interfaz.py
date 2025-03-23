@@ -8,23 +8,21 @@ from primeros_siguientes import PrimerosSiguientes
 from tabla_sintactica import TablaSintactica
 import re
 
+
 class AnalizadorCodigo(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.gramatica = Gramatica()
+
         self.setWindowTitle("Analizador de Código")
         self.setGeometry(100, 100, 800, 600)
 
-        # Instancia del analizador léxico
+        # Instancias de las clases
         self.analizador = AnalizadorLexico()
+        self.gramatica = Gramatica()
+        self.primeros_siguientes = PrimerosSiguientes(self.gramatica.obtener_gramatica())
+        self.tabla_sintactica = TablaSintactica(self.gramatica.obtener_gramatica())
 
         self.inicializar_interfaz()
-
-    def cargar_gramatica(self):
-        codigo = self.editor.toPlainText()  # Obtener el código del editor
-        resultado = self.gramatica.validar_codigo(codigo)  # Validar el código
-        self.gramatica_texto.setPlainText(resultado)  # Mostrar el resultado
-        self.tabs.setCurrentIndex(3)  # Cambiar a la pestaña de Gramática
 
     def inicializar_interfaz(self):
         # Crear un widget de pestañas
@@ -151,7 +149,7 @@ class AnalizadorCodigo(QMainWindow):
         try:
             codigo = self.editor.toPlainText()
             lineas = codigo.split("\n")
-            
+
             # Patrón para capturar espacios, tabs, símbolos y otros tokens
             patron_tokens = re.compile(r'\s|\t|[a-zA-Z_]\w*|\d+\.\d+|\d+|<=|>=|!=|\+\+|--|"[^"]*"|“[^”]*”|[(),:;{}\[\]+\-*/=<>]|.', re.VERBOSE)
 
@@ -193,16 +191,45 @@ class AnalizadorCodigo(QMainWindow):
             QMessageBox.critical(self, "Error", f"Ocurrió un error al analizar el código: {str(e)}")
 
     def cargar_gramatica(self):
-        # Aquí puedes agregar la lógica para cargar la gramática
-        self.gramatica_texto.setPlainText("Gramática cargada...")
-        self.tabs.setCurrentIndex(3)  # Cambiar a la pestaña de Gramática
+        try:
+            # Obtener el código del editor
+            codigo = self.editor.toPlainText()
+
+            # Obtener las reglas aplicadas
+            reglas_aplicadas = self.gramatica.obtener_reglas_aplicadas(codigo)
+
+            # Mostrar las reglas en la interfaz
+            if reglas_aplicadas:
+                gramatica_texto = "\n".join(reglas_aplicadas)
+                self.gramatica_texto.setPlainText(gramatica_texto)
+                QMessageBox.information(self, "Gramática", "Reglas aplicadas generadas exitosamente.")
+            else:
+                QMessageBox.warning(self, "Gramática", "No se encontraron reglas aplicables para el código.")
+
+            self.tabs.setCurrentIndex(3)  # Cambiar a la pestaña de Gramática
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Ocurrió un error al cargar la gramática: {str(e)}")
 
     def calcular_primeros_siguientes(self):
-        # Aquí puedes agregar la lógica para calcular primeros y siguientes
-        self.primeros_siguientes_texto.setPlainText("Primeros y siguientes calculados...")
-        self.tabs.setCurrentIndex(4)  # Cambiar a la pestaña de Primeros y Siguientes
+        try:
+            primeros, siguientes = self.primeros_siguientes.calcular_primeros_siguientes()
+            resultado = "Primeros:\n"
+            for no_terminal, primeros_set in primeros.items():
+                resultado += f"{no_terminal}: {', '.join(primeros_set)}\n"
+            resultado += "\nSiguientes:\n"
+            for no_terminal, siguientes_set in siguientes.items():
+                resultado += f"{no_terminal}: {', '.join(siguientes_set)}\n"
+            self.primeros_siguientes_texto.setPlainText(resultado)
+            QMessageBox.information(self, "Primeros y Siguientes", "Primeros y siguientes calculados exitosamente.")
+            self.tabs.setCurrentIndex(4)  # Cambiar a la pestaña de Primeros y Siguientes
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Ocurrió un error al calcular primeros y siguientes: {str(e)}")
 
     def generar_tabla_sintactica(self):
-        # Aquí puedes agregar la lógica para generar la tabla sintáctica
-        self.tabla_sintactica_texto.setPlainText("Tabla sintáctica generada...")
-        self.tabs.setCurrentIndex(5)  # Cambiar a la pestaña de Tabla Sintáctica
+        try:
+            resultado = self.tabla_sintactica.generar_tabla_sintactica()
+            self.tabla_sintactica_texto.setPlainText(resultado)
+            QMessageBox.information(self, "Tabla Sintáctica", "Tabla sintáctica generada exitosamente.")
+            self.tabs.setCurrentIndex(5)  # Cambiar a la pestaña de Tabla Sintáctica
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Ocurrió un error al generar la tabla sintáctica: {str(e)}")
