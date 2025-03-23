@@ -11,7 +11,7 @@ import re
 class AnalizadorCodigo(QMainWindow):
     def __init__(self):
         super().__init__()
-
+        self.gramatica = Gramatica()
         self.setWindowTitle("Analizador de Código")
         self.setGeometry(100, 100, 800, 600)
 
@@ -19,6 +19,12 @@ class AnalizadorCodigo(QMainWindow):
         self.analizador = AnalizadorLexico()
 
         self.inicializar_interfaz()
+
+    def cargar_gramatica(self):
+        codigo = self.editor.toPlainText()  # Obtener el código del editor
+        resultado = self.gramatica.validar_codigo(codigo)  # Validar el código
+        self.gramatica_texto.setPlainText(resultado)  # Mostrar el resultado
+        self.tabs.setCurrentIndex(3)  # Cambiar a la pestaña de Gramática
 
     def inicializar_interfaz(self):
         # Crear un widget de pestañas
