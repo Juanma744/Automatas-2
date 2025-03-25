@@ -98,6 +98,21 @@ class AnalizadorCodigo(QMainWindow):
         self.gramatica_tab.setLayout(layout)
         self.tabs.addTab(self.gramatica_tab, "Gramática")
 
+    def inicializar_tabla_sintactica_tab(self):
+        layout = QVBoxLayout()
+        
+        # Cambiar QTextEdit por QTableWidget
+        self.tabla_sintactica_widget = QTableWidget()
+        layout.addWidget(self.tabla_sintactica_widget)
+        
+        # Mantener el botón existente
+        self.boton_tabla_sintactica = QPushButton("Generar Tabla Sintáctica", self)
+        self.boton_tabla_sintactica.clicked.connect(self.generar_tabla_sintactica)
+        layout.addWidget(self.boton_tabla_sintactica)
+        
+        self.tabla_sintactica_tab = QWidget()
+        self.tabla_sintactica_tab.setLayout(layout)
+        self.tabs.addTab(self.tabla_sintactica_tab, "Tabla Sintáctica")
     def inicializar_primeros_siguientes_tab(self):
         layout = QVBoxLayout()
         
@@ -117,23 +132,19 @@ class AnalizadorCodigo(QMainWindow):
         self.primeros_siguientes_tab = QWidget()
         self.primeros_siguientes_tab.setLayout(layout)
         self.tabs.addTab(self.primeros_siguientes_tab, "Primeros y Siguientes")
-    def inicializar_tabla_sintactica_tab(self):
-        layout = QVBoxLayout()
-        self.tabla_sintactica_texto = QTextEdit(self)
-        self.tabla_sintactica_texto.setPlaceholderText("Aquí aparecerá la tabla sintáctica...")
-        self.tabla_sintactica_texto.setReadOnly(True)
-        
-        self.boton_tabla_sintactica = QPushButton("Generar Tabla Sintáctica", self)
-        self.boton_tabla_sintactica.clicked.connect(self.generar_tabla_sintactica)
-        
-        layout.addWidget(self.tabla_sintactica_texto)
-        layout.addWidget(self.boton_tabla_sintactica)
-        
-        self.tabla_sintactica_tab = QWidget()
-        self.tabla_sintactica_tab.setLayout(layout)
-        self.tabs.addTab(self.tabla_sintactica_tab, "Tabla Sintáctica")
-
-    # ------------------------- Funcionalidades principales -------------------------
+    def generar_tabla_sintactica(self):
+        try:
+            # Obtener referencia al QTableWidget de la pestaña
+            tabla_qt = self.tabs.widget(5).findChild(QTableWidget)
+            
+            # Mostrar en la tabla gráfica
+            self.tabla_sintactica.mostrar_en_qtablewidget(tabla_qt)
+            
+            QMessageBox.information(self, "Tabla Sintáctica", "Tabla generada exitosamente!")
+            self.tabs.setCurrentIndex(5)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error: {str(e)}")
+        # ------------------------- Funcionalidades principales -------------------------
     def mostrar_mensaje_compilacion(self):
         QMessageBox.information(self, "Compilar", "La compilación del código no es responsabilidad de esta parte del programa.")
 
@@ -228,9 +239,9 @@ class AnalizadorCodigo(QMainWindow):
             QMessageBox.critical(self, "Error", f"Error al calcular: {str(e)}")
     def generar_tabla_sintactica(self):
         try:
-            resultado = self.tabla_sintactica.generar_tabla_sintactica()
-            self.tabla_sintactica_texto.setPlainText(resultado)
-            QMessageBox.information(self, "Tabla Sintáctica", "Tabla sintáctica generada exitosamente.")
+            # Usar la referencia directa al widget
+            self.tabla_sintactica.mostrar_en_qtablewidget(self.tabla_sintactica_widget)
+            QMessageBox.information(self, "Tabla Sintáctica", "Tabla generada exitosamente!")
             self.tabs.setCurrentIndex(5)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error al generar tabla: {str(e)}")
