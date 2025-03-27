@@ -204,26 +204,36 @@ class AnalizadorCodigo(QMainWindow):
 
     def calcular_primeros_siguientes(self):
         try:
-            primeros, siguientes = self.primeros_siguientes.calcular_primeros_siguientes()
+            # Obtener las reglas aplicadas del código
+            codigo = self.editor.toPlainText()
+            reglas_aplicadas = self.gramatica.obtener_reglas_aplicadas(codigo)
+            
+            # Calcular primeros y siguientes basados en las reglas activas
+            primeros, siguientes = self.primeros_siguientes.calcular_primeros_siguientes(reglas_aplicadas)
             
             # Limpiar tabla existente
             self.tabla_primeros_siguientes.setRowCount(0)
             
-            # Orden de los no terminales
-            no_terminales = [
+            # Orden preferido para mostrar los no terminales
+            orden_no_terminales = [
                 "S", "A", "A'", "B", "C", "D", "F", "G", 
                 "H", "I", "J", "K", "K'", "L", "L'", "M", 
                 "N", "N'", "OP", "Q", "R"
             ]
             
-            # Llenar la tabla
-            for nt in no_terminales:
+            # Llenar la tabla solo con los no terminales activos
+            no_terminales_activos = set(self.primeros_siguientes.gramatica_activa.keys())
+            
+            for nt in orden_no_terminales:
+                if nt not in no_terminales_activos:
+                    continue
+                    
                 row_position = self.tabla_primeros_siguientes.rowCount()
                 self.tabla_primeros_siguientes.insertRow(row_position)
                 
-                # Obtener datos
-                pr = ", ".join(sorted(primeros.get(nt, set()))).replace("ε", "€")
-                sg = ", ".join(sorted(siguientes.get(nt, set()))).replace("SiNo", "SINo_")
+                # Obtener y formatear datos
+                pr = ", ".join(sorted(primeros.get(nt, set())))
+                sg = ", ".join(sorted(siguientes.get(nt, set())))
                 
                 # Añadir celdas
                 self.tabla_primeros_siguientes.setItem(row_position, 0, QTableWidgetItem(nt))
@@ -232,11 +242,11 @@ class AnalizadorCodigo(QMainWindow):
             
             # Ajustar el ancho de las columnas
             self.tabla_primeros_siguientes.resizeColumnsToContents()
-            QMessageBox.information(self, "Éxito", "Tabla generada correctamente!")
+            QMessageBox.information(self, "Éxito", "Tabla de Primeros y Siguientes generada correctamente!")
             self.tabs.setCurrentIndex(4)
             
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error al calcular: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error al calcular Primeros y Siguientes: {str(e)}")
     def generar_tabla_sintactica(self):
         try:
             # Usar la referencia directa al widget
