@@ -1,13 +1,14 @@
+# tabla_sintactica.py
+
 from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QMessageBox
 
 class TablaSintactica:
-    def __init__(self, gramatica=None, no_terminales_interfaz_orden=None): # Recibir orden
+    def __init__(self, gramatica=None, no_terminales_interfaz_orden=None):
         self.terminales = [
             "Start", "End", "Entero", "Doble", "Cadena", "num", "var", "=",
             "+", "-", "*", "/", "(", ")", "{", "}", "Si", "SiNo", "Mientras", "Salida",
-            "Entrada", ">", "<", "<=", ">=", "!=", "!", "++",  ","
+            "Entrada", ">", "<", "<=", ">=", "!=", "!", "++", ","
         ]
         self.no_terminales = [
             "S", "A", "A'", "B", "C", "J", "K", "K'", "D", "L", "L'", "M",
@@ -15,27 +16,46 @@ class TablaSintactica:
         ]
         self.tabla = {nt: {t: "" for t in self.terminales} for nt in self.no_terminales}
         self.gramatica = gramatica
-        self.no_terminales_orden = no_terminales_interfaz_orden # Guardar orden
+        self.no_terminales_orden = no_terminales_interfaz_orden
 
     def construir_tabla(self, primeros, gramatica):
         """Construye la tabla sintáctica predictiva."""
+        # Crear un diccionario para buscar el número de fila de cada NT
         fila_por_nt = {nt: i + 1 for i, nt in enumerate(self.no_terminales_orden)}
 
-        print("TablaSintactica.construir_tabla: Iniciando la construcción de la tabla...")
-        for no_terminal, producciones in gramatica.items():
-            print(f"TablaSintactica.construir_tabla: No Terminal = {no_terminal}")
-            for produccion in producciones:
-                print(f"TablaSintactica.construir_tabla: Producción = {produccion}")
+        # Iterar sobre los no terminales EN LA GRAMÁTICA ACTIVA
+        for no_terminal in gramatica.keys(): # <--- Cambiado
+
+            # Verificar si el no_terminal existe en self.no_terminales_orden
+            if no_terminal not in self.no_terminales_orden:
+                print(f"Advertencia: No terminal '{no_terminal}' no encontrado en el orden. Omitiendo.")
+                continue
+
+            for produccion in gramatica[no_terminal]:
                 primeros_produccion = self.calcular_primeros_produccion(produccion, primeros)
 
                 for terminal in primeros_produccion:
                     if terminal != "ε":
                         fila_numero = fila_por_nt[no_terminal]
-                        print(f"TablaSintactica.construir_tabla: Terminal = {terminal}, Fila = {fila_numero}") # <----
-                        if self.tabla[no_terminal][terminal] == "":
-                            self.tabla[no_terminal][terminal] = str(fila_numero)
+                        if terminal in self.terminales:
+                           if self.tabla[no_terminal][terminal] == "":
+                                self.tabla[no_terminal][terminal] = str(fila_numero)
+                           else:
+                                print(f"CONFLICTO: {no_terminal}, {terminal}")
                         else:
-                            print(f"TablaSintactica.construir_tabla: CONFLICTO: {no_terminal}, {terminal}")
+                            print(f"Terminal '{terminal}' no encontrado en lista de terminales. Omitiendo.")
+
+
+                if "ε" in primeros_produccion:
+                    for terminal_sig in primeros.get(no_terminal, {}):
+                        if terminal_sig != "ε":
+                             if terminal_sig in self.terminales:
+                                if self.tabla[no_terminal][terminal_sig] == "":
+                                    self.tabla[no_terminal][terminal_sig] = str(fila_numero)
+                                else:
+                                    print(f"CONFLICTO (epsilon): {no_terminal}, {terminal_sig}")
+                             else:
+                                 print(f"Terminal '{terminal_sig}' no encontrado en lista de terminales (épsilon). Omitiendo.")
 
     def calcular_primeros_produccion(self, produccion, primeros):
         conjunto_primeros = set()
@@ -101,7 +121,7 @@ class TablaSintactica:
             tabla_qt.setItem(i, 0, item_nt)
 
             for j, terminal in enumerate(self.terminales):
-                valor = self.tabla[nt].get(terminal, "") # <--- Usar .get aquí
+                valor = self.tabla[nt].get(terminal, "")  # <--- Usar .get aquí
                 texto = str(valor) if valor != "" else ""
                 item = QTableWidgetItem(texto)
                 item.setTextAlignment(alineacion)

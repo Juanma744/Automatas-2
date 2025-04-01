@@ -1,3 +1,4 @@
+# Interfaz.py
 from PyQt6.QtWidgets import (
     QMainWindow, QTextEdit, QPushButton, QTableWidget, QTableWidgetItem,
     QVBoxLayout, QWidget, QMessageBox, QTabWidget, QHeaderView
@@ -275,39 +276,35 @@ class AnalizadorCodigo(QMainWindow):
             
     def generar_tabla_sintactica(self):
         try:
+            # Obtener conjuntos necesarios
+            primeros, _ = self.primeros_siguientes.primeros, self.primeros_siguientes.siguientes
             codigo = self.editor.toPlainText()
             gramatica_activa = self.gramatica.obtener_gramatica_activa(codigo)
 
             if not gramatica_activa:
-                QMessageBox.warning(self, "Tabla Sintáctica", "No se pudo generar la tabla, revisa la gramática (código incompleto).")
-                # Limpiar la tabla o mostrar un mensaje indicando que la tabla está vacía
-                self.tabla_sintactica_widget.setRowCount(0)  # Limpiar la tabla
-                return # Salir
+                QMessageBox.warning(self, "Tabla Sintáctica", "No se pudo generar la tabla, revisa la gramática.")
+                return
 
-            try:
-                self.calcular_primeros_siguientes()
-                primeros = self.primeros_siguientes.primeros
-            except Exception as e:
-                QMessageBox.warning(self, "Tabla Sintáctica", f"No se pudieron calcular los Primeros (código incompleto): {str(e)}")
-                primeros = {}
+            # Asegúrate de tener los Primeros calculados
+            self.calcular_primeros_siguientes()  # Llama a tu función existente
+            primeros = self.primeros_siguientes.primeros  # Obtén los Primeros
 
-            no_terminales_orden = self.primeros_siguientes.no_terminales_interfaz_orden
-            self.tabla_sintactica = TablaSintactica(gramatica_activa, no_terminales_orden)
+            # Obtener el orden de los no terminales
+            no_terminales_orden = self.primeros_siguientes.no_terminales_interfaz_orden # <--- Obtener el orden
 
-            try:
-                self.tabla_sintactica.construir_tabla(primeros, gramatica_activa)
-            except Exception as e:
-                QMessageBox.warning(self, "Tabla Sintáctica", f"No se pudo construir la tabla sintáctica completamente (código incompleto): {str(e)}")
+            # Crear instancia de TablaSintactica con la gramática activa Y EL ORDEN
+            self.tabla_sintactica = TablaSintactica(gramatica_activa, no_terminales_orden) # <--- Pasar el orden
 
-            try:
-                self.tabla_sintactica.mostrar_en_qtablewidget(self.tabla_sintactica_widget)
-            except Exception as e:
-                QMessageBox.warning(self, "Tabla Sintáctica", f"Error al mostrar la tabla sintáctica: {str(e)}")
+            # Construir la tabla sintáctica
+            self.tabla_sintactica.construir_tabla(primeros, gramatica_activa)
 
-            QMessageBox.information(self, "Tabla Sintáctica", "Tabla generada (posiblemente incompleta) basada en el código ingresado.")
+            # Mostrar la tabla en el QTableWidget
+            self.tabla_sintactica.mostrar_en_qtablewidget(self.tabla_sintactica_widget)
+
+            QMessageBox.information(self, "Tabla Sintáctica", "Tabla generada correctamente basada en el código ingresado.")
             self.tabs.setCurrentIndex(5)
 
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error general al generar la tabla sintáctica: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error al generar la tabla sintáctica: {str(e)}")
             import traceback
             traceback.print_exc()
