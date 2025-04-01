@@ -275,14 +275,39 @@ class AnalizadorCodigo(QMainWindow):
             
     def generar_tabla_sintactica(self):
         try:
-            # Obtener conjuntos necesarios
-            primeros, _ = self.primeros_siguientes.primeros, self.primeros_siguientes.siguientes
-            
-            # Generar y mostrar tabla
-            self.tabla_sintactica.construir_tabla(primeros)
-            self.tabla_sintactica.mostrar_en_qtablewidget(self.tabla_sintactica_widget)
-            
-            QMessageBox.information(self, "Tabla Sintáctica", "Tabla generada exitosamente!")
+            codigo = self.editor.toPlainText()
+            gramatica_activa = self.gramatica.obtener_gramatica_activa(codigo)
+
+            if not gramatica_activa:
+                QMessageBox.warning(self, "Tabla Sintáctica", "No se pudo generar la tabla, revisa la gramática (código incompleto).")
+                # Limpiar la tabla o mostrar un mensaje indicando que la tabla está vacía
+                self.tabla_sintactica_widget.setRowCount(0)  # Limpiar la tabla
+                return # Salir
+
+            try:
+                self.calcular_primeros_siguientes()
+                primeros = self.primeros_siguientes.primeros
+            except Exception as e:
+                QMessageBox.warning(self, "Tabla Sintáctica", f"No se pudieron calcular los Primeros (código incompleto): {str(e)}")
+                primeros = {}
+
+            no_terminales_orden = self.primeros_siguientes.no_terminales_interfaz_orden
+            self.tabla_sintactica = TablaSintactica(gramatica_activa, no_terminales_orden)
+
+            try:
+                self.tabla_sintactica.construir_tabla(primeros, gramatica_activa)
+            except Exception as e:
+                QMessageBox.warning(self, "Tabla Sintáctica", f"No se pudo construir la tabla sintáctica completamente (código incompleto): {str(e)}")
+
+            try:
+                self.tabla_sintactica.mostrar_en_qtablewidget(self.tabla_sintactica_widget)
+            except Exception as e:
+                QMessageBox.warning(self, "Tabla Sintáctica", f"Error al mostrar la tabla sintáctica: {str(e)}")
+
+            QMessageBox.information(self, "Tabla Sintáctica", "Tabla generada (posiblemente incompleta) basada en el código ingresado.")
             self.tabs.setCurrentIndex(5)
+
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error al generar tabla: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error general al generar la tabla sintáctica: {str(e)}")
+            import traceback
+            traceback.print_exc()
