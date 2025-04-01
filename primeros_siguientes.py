@@ -1,261 +1,212 @@
+# --- START OF FILE primeros_siguientes.py ---
+
+from collections import defaultdict
+import re # Import re (aunque no se usa directamente aquí ahora)
+
 class PrimerosSiguientes:
-    def __init__(self, gramatica=None):
-        # Gramática completa de referencia
-        self.gramatica_completa = {
-            "S": ["Inicio A Fin"],
-            "A": ["B A'"],
-            "A'": ["ε", "B A'"],
-            "B": ["C", "D", "F", "G", "H", "I"],
-            "C": ["J K"],
-            "K": ["var K'"],
-            "K'": ["ε", ", var K'"],
-            "J": ["Entero", "Doble", "Cadena"],
-            "D": ["var = L"],
-            "L": ["M L'"],
-            "L'": ["ε", "OP M L'"],
-            "M": ["var", "(L)", "num"],
-            "OP": ["+", "-", "*", "/"],
-            "H": ["Si(N) {A} Q"],
-            "Q": ["ε", "SiNo {A}"],
-            "I": ["Mientras(N) {A}"],
-            "F": ["Entrada(var)"],
-            "G": ["Salida(var)"],
-            "N": ["M N'"],
-            "N'": ["ε", "R M"],
-            "R": [">", "<", "=", "!"]
+    def __init__(self):
+        # Gramática completa de REFERENCIA (no se usa directamente para cálculo ahora)
+        # Se usa para el orden de la interfaz
+        self.gramatica_completa_ref = {
+             "S": [["Start", "A", "End"]], "A": [["B", "A'"]], "A'": [["ε"], ["B", "A'"]],
+             "B": [["C"], ["D"], ["F"], ["G"], ["H"], ["I"]], "C": [["J", "K"]],
+             "J": [["Entero"], ["Doble"], ["Cadena"]], "K": [["var", "K'"]],
+             "K'": [["ε"], [",", "var", "K'"]], "D": [["var", "=", "L"]],
+             "L": [["M", "L'"]], "L'": [["ε"], ["OP", "M", "L'"]],
+             "M": [["var"], ["(", "L", ")"], ["num"]], "OP": [["+"], ["-"], ["*"], ["/"]],
+             "H": [["Si", "(", "N", ")", "{", "A", "}", "Q"]], "Q": [["ε"], ["SiNo", "{", "A", "}"]],
+             "I": [["Mientras", "(", "N", ")", "{", "A", "}"]], "F": [["Entrada", "(", "var", ")"]],
+             "G": [["Salida", "(", "var", ")"]], "N": [["M", "N'"]],
+             "N'": [["ε"], ["R", "M"]],
+             "R": [[">"], ["<"], ["="], ["!"], ["<="], [">="], ["!="], ["++"]]
         }
-        self.gramatica_activa = {}
-        self.primeros = {}
-        self.siguientes = {}
-        self.terminales = set()
+        self.no_terminales_interfaz_orden = [
+            "S", "A", "A'", "B", "C", "D", "F", "G", "H", "I",
+            "J", "K", "K'", "L", "L'", "M", "N", "N'", "OP", "Q", "R"
+        ]
+
+        # Inicialización de conjuntos (se llenarán al calcular)
+        self.primeros = defaultdict(set)
+        self.siguientes = defaultdict(set)
+        self.gramatica_usada = {} # Para guardar la gramática con la que se calcularon
         self.no_terminales = set()
-
-    def actualizar_gramatica_activa(self, reglas_aplicadas):
-        """Actualiza la gramática activa basada en las reglas aplicadas encontradas en el código"""
-        self.gramatica_activa = {}
-        
-        # Mapeo de reglas simplificadas a las completas
-        reglas_mapeo = {
-            "S → Inicio A Fin": "S",
-            "C → J K": "C",
-            "J → Entero | Doble | Cadena": "J",
-            "K → var K'": "K",
-            "G → Salida(var)": "G",
-            "F → Entrada(var)": "F",
-            "I → Mientras(N) {A}": "I",
-            "D → var = L": "D",
-            "L → M L'": "L",
-            "M → var | num": "M",
-            "OP → + | - | * | /": "OP",
-            "H → Si(N) {A} Q": "H",
-            "Q → ε | SiNo {A}": "Q",
-            "A → B A'": "A",
-            "A' → ε | B A'": "A'",
-            "B → C | D | F | G | H | I": "B",
-            "K' → ε | , var K'": "K'",
-            "L' → ε | OP M L'": "L'",
-            "N → M N'": "N",
-            "N' → ε | R M": "N'",
-            "R → > | < | = | !": "R"
-        }
-        
-        # Activar solo las reglas que aparecen en el código
-        for regla in reglas_aplicadas:
-            if regla in reglas_mapeo:
-                nt = reglas_mapeo[regla]
-                self.gramatica_activa[nt] = self.gramatica_completa[nt]
-        
-        # Incluir dependencias necesarias
-        self._agregar_dependencias()
-        
-        return self.gramatica_activa
-
-    def _agregar_dependencias(self):
-        """Agrega reglas dependientes necesarias para las reglas activas"""
-        # Siempre incluir S si hay otras reglas
-        if "S" not in self.gramatica_activa and any(nt in self.gramatica_activa for nt in ["A", "B", "C", "D", "F", "G", "H", "I"]):
-            self.gramatica_activa["S"] = self.gramatica_completa["S"]
-        
-        # Incluir A y A' si hay B
-        if "B" in self.gramatica_activa and "A" not in self.gramatica_activa:
-            self.gramatica_activa["A"] = self.gramatica_completa["A"]
-            self.gramatica_activa["A'"] = self.gramatica_completa["A'"]
-        
-        # Incluir J si hay C
-        if "C" in self.gramatica_activa and "J" not in self.gramatica_activa:
-            self.gramatica_activa["J"] = self.gramatica_completa["J"]
-        
-        # Incluir K' si hay K
-        if "K" in self.gramatica_activa and "K'" not in self.gramatica_activa:
-            self.gramatica_activa["K'"] = self.gramatica_completa["K'"]
-        
-        # Incluir L y L' si hay D
-        if "D" in self.gramatica_activa and "L" not in self.gramatica_activa:
-            self.gramatica_activa["L"] = self.gramatica_completa["L"]
-            self.gramatica_activa["L'"] = self.gramatica_completa["L'"]
-        
-        # Incluir OP si hay L'
-        if "L'" in self.gramatica_activa and "OP" not in self.gramatica_activa:
-            self.gramatica_activa["OP"] = self.gramatica_completa["OP"]
-
-    def calcular_primeros_siguientes(self, reglas_aplicadas):
-        """Calcula primeros y siguientes basado en las reglas activas encontradas en el código"""
-        # Actualizar gramática activa primero
-        self.actualizar_gramatica_activa(reglas_aplicadas)
-        
-        if not self.gramatica_activa:
-            return {}, {}
-        
-        # Inicializar conjuntos
-        self._inicializar_conjuntos()
-        
-        # Calcular primeros
-        self.calcular_primeros()
-        
-        # Calcular siguientes
-        self.calcular_siguientes()
-        
-        # Aplicar correcciones especiales
-        self._aplicar_correcciones_especiales()
-        
-        # Formatear resultados para coincidir con tus imágenes
-        primeros = {k: {v.replace("ε", "€") for v in vs} for k, vs in self.primeros.items()}
-        siguientes = {k: {v.replace("SiNo", "SINo") for v in vs} for k, vs in self.siguientes.items()}
-        
-        return primeros, siguientes
-
-    def _inicializar_conjuntos(self):
-        """Inicializa los conjuntos de terminales, no terminales, primeros y siguientes"""
         self.terminales = set()
-        self.no_terminales = set(self.gramatica_activa.keys())
-        self.primeros = {nt: set() for nt in self.no_terminales}
-        self.siguientes = {nt: set() for nt in self.no_terminales}
-        self.siguientes["S"].add("$")  # Regla especial para S
-        
-        # Identificar terminales válidos
-        terminales_temporales = set()
-        for producciones in self.gramatica_activa.values():
-            for produccion in producciones:
-                for simbolo in produccion.split():
-                    if simbolo not in self.no_terminales and simbolo != "ε":
-                        terminales_temporales.add(simbolo)
-        
-        # Filtrar terminales (eliminar símbolos especiales)
-        simbolos_invalidos = {"(", ")", "{", "}", "=", ",", ":", ";", "+", "-", "*", "/", ">", "<", "!"}
-        self.terminales = terminales_temporales - simbolos_invalidos
 
-    def calcular_primeros(self):
-        """Calcula los conjuntos de primeros para cada no terminal"""
+    def calcular_para_gramatica(self, gramatica_activa):
+        """Calcula Primeros y Siguientes para la gramática activa dada."""
+        self.gramatica_usada = gramatica_activa
+        self._identificar_simbolos() # Identificar NT y T de la gramática activa
+        self._inicializar_conjuntos()
+        self._calcular_primeros()
+        self._calcular_siguientes()
+        # No devuelve nada, modifica self.primeros y self.siguientes
+
+    def _identificar_simbolos(self):
+        """Identifica NT y T a partir de self.gramatica_usada."""
+        self.no_terminales = set(self.gramatica_usada.keys())
+        self.terminales = set()
+        for nt in self.gramatica_usada:
+            for produccion in self.gramatica_usada[nt]:
+                for simbolo in produccion:
+                    if simbolo not in self.no_terminales and simbolo != "ε":
+                        self.terminales.add(simbolo)
+
+# --- En primeros_siguientes.py, dentro de class PrimerosSiguientes ---
+    def _inicializar_conjuntos(self):
+        """Inicializa/limpia los conjuntos antes del cálculo."""
+        self.primeros.clear()
+        self.siguientes.clear()
+        print("Conjuntos Primeros/Siguientes limpiados.") # DEBUG
+
+        # Inicializar siguientes aquí porque _calcular_siguientes lo necesita
+        # IMPORTANTE: Iterar sobre self.no_terminales (los activos), no sobre la lista completa fija
+        for nt in self.no_terminales:
+            self.siguientes[nt] = set() # Inicializa vacío para todos los NT activos
+
+        start_symbol = "S" # Asumiendo S es el inicial
+        if start_symbol in self.no_terminales: # Solo si S está en la gramática activa
+             print(f"Añadiendo '$' a Siguientes({start_symbol})") # DEBUG
+             self.siguientes[start_symbol].add("$")
+        else:
+             print(f"Símbolo inicial '{start_symbol}' no está en los NT activos.") # DEBUG
+
+
+    def _calcular_primeros(self):
+        # Algoritmo de Primeros (igual que antes, pero usa self.gramatica_usada)
+        # Inicializar FIRST(T) = {T} para terminales T
+        for terminal in self.terminales:
+            self.primeros[terminal] = {terminal}
+        # Inicializar FIRST(NT) = {} para no terminales NT
+        for nt in self.no_terminales:
+            self.primeros[nt] = set()
+
         cambiado = True
         while cambiado:
             cambiado = False
-            for no_terminal, producciones in self.gramatica_activa.items():
+            # Usar self.gramatica_usada en lugar de self.gramatica
+            for nt, producciones in self.gramatica_usada.items():
                 for produccion in producciones:
-                    simbolos = produccion.split()
-                    
-                    # Caso ε
-                    if simbolos[0] == "ε":
-                        if "ε" not in self.primeros[no_terminal]:
-                            self.primeros[no_terminal].add("ε")
+                    # Caso: X -> ε
+                    if not produccion or produccion == ["ε"]:
+                        if "ε" not in self.primeros[nt]:
+                            self.primeros[nt].add("ε")
                             cambiado = True
                         continue
-                    
-                    # Procesar cada símbolo en la producción
-                    todos_tienen_epsilon = True
-                    for simbolo in simbolos:
-                        if simbolo in self.terminales:
-                            # Terminal - agregar a primeros
-                            if simbolo not in self.primeros[no_terminal]:
-                                self.primeros[no_terminal].add(simbolo)
-                                cambiado = True
-                            todos_tienen_epsilon = False
-                            break
-                        else:
-                            # No terminal - agregar sus primeros (excepto ε)
-                            primeros_simbolo = self.primeros.get(simbolo, set()) - {"ε"}
-                            nuevos_primeros = primeros_simbolo - self.primeros[no_terminal]
-                            if nuevos_primeros:
-                                self.primeros[no_terminal].update(nuevos_primeros)
-                                cambiado = True
-                            
-                            # Verificar si tiene ε
-                            if "ε" not in self.primeros.get(simbolo, set()):
-                                todos_tienen_epsilon = False
-                                break
-                    
-                    # Si todos pueden ser ε, agregar ε
-                    if todos_tienen_epsilon and "ε" not in self.primeros[no_terminal]:
-                        self.primeros[no_terminal].add("ε")
-                        cambiado = True
 
-    def calcular_siguientes(self):
-        """Calcula los conjuntos de siguientes para cada no terminal"""
+                    # Caso: X -> Y1 Y2 ... Yk
+                    produccion_contiene_epsilon = True # Asumir que puede derivar epsilon
+                    for simbolo in produccion:
+                        # Si el símbolo no está en primeros (podría ser terminal no visto antes)
+                        if simbolo not in self.primeros:
+                             if simbolo in self.terminales:
+                                 self.primeros[simbolo] = {simbolo}
+                             else: # Error: NT no definido en la gramática activa? Omitir?
+                                 # print(f"Advertencia: Símbolo '{simbolo}' en producción de '{nt}' no encontrado en primeros.")
+                                 produccion_contiene_epsilon = False # No podemos asumir epsilon
+                                 break # No podemos continuar con esta producción
+
+                        primeros_simbolo = self.primeros[simbolo]
+                        nuevos_primeros = primeros_simbolo - {"ε"}
+
+                        antes = len(self.primeros[nt])
+                        self.primeros[nt].update(nuevos_primeros)
+                        if len(self.primeros[nt]) > antes:
+                            cambiado = True
+
+                        if "ε" not in primeros_simbolo:
+                            # Si Y_i no deriva ε, detenemos para esta producción
+                            produccion_contiene_epsilon = False
+                            break
+
+                    # Si todos los símbolos de la producción derivaron epsilon
+                    if produccion_contiene_epsilon:
+                         if "ε" not in self.primeros[nt]:
+                            self.primeros[nt].add("ε")
+                            cambiado = True
+
+
+    def _calcular_siguientes(self):
+        # Algoritmo de Siguientes (igual que antes, pero usa self.gramatica_usada)
+        # La inicialización ya se hizo en _inicializar_conjuntos
+
         cambiado = True
         while cambiado:
             cambiado = False
-            for no_terminal, producciones in self.gramatica_activa.items():
+            # Usar self.gramatica_usada
+            for nt_origen, producciones in self.gramatica_usada.items():
                 for produccion in producciones:
-                    simbolos = produccion.split()
-                    for i, simbolo in enumerate(simbolos):
-                        if simbolo not in self.no_terminales:
-                            continue
-                        
-                        # Regla 1: Hay símbolos después
-                        if i < len(simbolos) - 1:
-                            siguiente = simbolos[i+1]
+                    if produccion == ["ε"]:
+                        continue
 
-                        if siguiente in self.terminales:
-                                # Terminal - agregar a siguientes
-                                if siguiente not in self.siguientes[simbolo]:
-                                    self.siguientes[simbolo].add(siguiente)
-                                    cambiado = True
-                        else:
-                                # No terminal - agregar primeros (excepto ε)
-                                primeros_siguiente = self.primeros.get(siguiente, set()) - {"ε"}
-                                nuevos_siguientes = primeros_siguiente - self.siguientes[simbolo]
-                                if nuevos_siguientes:
-                                    self.siguientes[simbolo].update(nuevos_siguientes)
-                                    cambiado = True
-                                
-                                # Si puede ser ε, agregar siguientes del no terminal
-                                if "ε" in self.primeros.get(siguiente, set()):
-                                    siguientes_nt = self.siguientes.get(no_terminal, set())
-                                    nuevos_siguientes = siguientes_nt - self.siguientes[simbolo]
-                                    if nuevos_siguientes:
-                                        self.siguientes[simbolo].update(nuevos_siguientes)
-                                        cambiado = True
-                        
-                        # Regla 2: Es el último símbolo o todo lo que sigue puede ser ε
-                        if i == len(simbolos) - 1 or all(
-                            "ε" in self.primeros.get(s, set()) 
-                            for s in simbolos[i+1:] 
-                            if s in self.no_terminales
-                        ):
-                            siguientes_nt = self.siguientes.get(no_terminal, set())
-                            nuevos_siguientes = siguientes_nt - self.siguientes[simbolo]
-                            if nuevos_siguientes:
-                                self.siguientes[simbolo].update(nuevos_siguientes)
+                    # Para manejar FOLLOW(B) en A -> αB
+                    trailer = set(self.siguientes[nt_origen])
+
+                    # Iterar de derecha a izquierda
+                    for i in range(len(produccion) - 1, -1, -1):
+                        simbolo_actual = produccion[i]
+
+                        if simbolo_actual in self.no_terminales:
+                             # Calcular FIRST(beta) donde beta es produccion[i+1:]
+                            primeros_beta = set()
+                            epsilon_en_beta = True
+                            for j in range(i + 1, len(produccion)):
+                                simbolo_beta = produccion[j]
+                                primeros_simbolo_beta = self.primeros.get(simbolo_beta, set())
+                                primeros_beta.update(primeros_simbolo_beta - {"ε"})
+                                if "ε" not in primeros_simbolo_beta:
+                                    epsilon_en_beta = False
+                                    break
+                            
+                            # Regla 2: A -> αBβ, añadir FIRST(β) - {ε} a FOLLOW(B)
+                            antes = len(self.siguientes[simbolo_actual])
+                            self.siguientes[simbolo_actual].update(primeros_beta)
+                            if len(self.siguientes[simbolo_actual]) > antes:
                                 cambiado = True
-        
-        # Aplicar correcciones especiales después del cálculo principal
-        self._aplicar_correcciones_especiales()
+                                
+                            # Regla 3: A -> αBβ donde ε está en FIRST(β), añadir FOLLOW(A) a FOLLOW(B)
+                            # O Regla 3: A -> αB, añadir FOLLOW(A) a FOLLOW(B)
+                            if epsilon_en_beta: # Si beta no existía (i es el último) o FIRST(beta) contiene ε
+                                antes = len(self.siguientes[simbolo_actual])
+                                self.siguientes[simbolo_actual].update(self.siguientes[nt_origen])
+                                if len(self.siguientes[simbolo_actual]) > antes:
+                                    cambiado = True
 
-    def _aplicar_correcciones_especiales(self):
-        """Aplica correcciones especiales para casos específicos"""
-        # Corrección para C → J K
-        if "C" in self.gramatica_activa:
-            self.siguientes["K"].update(self.siguientes.get("C", set()))
-        
-        # Corrección para K → var K'
-        if "K" in self.gramatica_activa and "K'" in self.gramatica_activa:
-            self.siguientes["K'"].update(self.siguientes.get("K", set()))
-        
-        # Corrección para L → M L'
-        if "L" in self.gramatica_activa and "L'" in self.gramatica_activa:
-            self.siguientes["M"].update(self.primeros.get("L'", set()) - {"ε"})
-            if "ε" in self.primeros.get("L'", set()):
-                self.siguientes["M"].update(self.siguientes.get("L", set()))
-        
-        # Corrección para L' → OP M L'
-        if "L'" in self.gramatica_activa and "OP" in self.gramatica_activa:
-            self.siguientes["OP"].update(self.primeros.get("M", set()) - {"ε"})
+
+    def obtener_primeros_siguientes_formateados(self):
+        """Devuelve los conjuntos formateados para la interfaz."""
+        # Formateo (igual que antes, pero usa los conjuntos calculados por calcular_para_gramatica)
+        # Orden de terminales para la salida (basado en la imagen y sentido común)
+        # Usar los terminales encontrados en la gramática activa + $
+        terminales_ordenados = sorted(list(self.terminales)) + ['$']
+        custom_order = {t: i for i, t in enumerate([
+            'Start', 'End', 'Entero', 'Doble', 'Cadena', 'var', 'num',
+            '(', ')', '{', '}', '+', '-', '*', '/', '=',
+            '>', '<', '<=', '>=', '!=', '!', '++',
+            'Si', 'SiNo', 'Mientras', 'Entrada', 'Salida',
+            ',', ';', ':', '$', 'ε'
+        ])}
+        def sort_key(x):
+             return (custom_order.get(x, float('inf')), x)
+
+        primeros_formateados = {}
+        siguientes_formateados = {}
+
+        # Mostrar siempre todos los NTs del orden de interfaz, aunque no estén activos
+        for nt in self.no_terminales_interfaz_orden:
+            if nt in self.no_terminales: # Si el NT estuvo en la gramática activa
+                # Formatear Primeros
+                p_list = sorted(list(self.primeros.get(nt, set())), key=sort_key)
+                p_list_str = [item.replace("SiNo", "SINo_").replace("ε", "€") for item in p_list]
+                primeros_formateados[nt] = ", ".join(p_list_str)
+
+                # Formatear Siguientes
+                s_list = sorted(list(self.siguientes.get(nt, set())), key=sort_key)
+                s_list_str = [item.replace("SiNo", "SINo_") for item in s_list]
+                siguientes_formateados[nt] = ", ".join(s_list_str)
+            else: # Si el NT no se activó con el código actual
+                primeros_formateados[nt] = "-" # O "" o "No aplica"
+                siguientes_formateados[nt] = "-"
+
+        return primeros_formateados, siguientes_formateados
+
+# --- END OF FILE primeros_siguientes.py ---

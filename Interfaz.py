@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QMainWindow, QTextEdit, QPushButton, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QWidget, QMessageBox, QTabWidget
+    QVBoxLayout, QWidget, QMessageBox, QTabWidget, QHeaderView
 )
 from analizador import AnalizadorLexico
 from gramatica import Gramatica
@@ -17,8 +17,8 @@ class AnalizadorCodigo(QMainWindow):
         # Instancias de las clases
         self.analizador = AnalizadorLexico()
         self.gramatica = Gramatica()
-        self.primeros_siguientes = PrimerosSiguientes(self.gramatica.obtener_gramatica())
-        self.tabla_sintactica = TablaSintactica(self.gramatica.obtener_gramatica())
+        self.primeros_siguientes = PrimerosSiguientes()
+        self.tabla_sintactica = TablaSintactica()
 
         self.inicializar_interfaz()
 
@@ -100,12 +100,9 @@ class AnalizadorCodigo(QMainWindow):
 
     def inicializar_tabla_sintactica_tab(self):
         layout = QVBoxLayout()
-        
-        # Cambiar QTextEdit por QTableWidget
         self.tabla_sintactica_widget = QTableWidget()
         layout.addWidget(self.tabla_sintactica_widget)
         
-        # Mantener el botón existente
         self.boton_tabla_sintactica = QPushButton("Generar Tabla Sintáctica", self)
         self.boton_tabla_sintactica.clicked.connect(self.generar_tabla_sintactica)
         layout.addWidget(self.boton_tabla_sintactica)
@@ -113,18 +110,17 @@ class AnalizadorCodigo(QMainWindow):
         self.tabla_sintactica_tab = QWidget()
         self.tabla_sintactica_tab.setLayout(layout)
         self.tabs.addTab(self.tabla_sintactica_tab, "Tabla Sintáctica")
+
     def inicializar_primeros_siguientes_tab(self):
         layout = QVBoxLayout()
         
-        # Crear tabla con 3 columnas
         self.tabla_primeros_siguientes = QTableWidget(self)
         self.tabla_primeros_siguientes.setColumnCount(3)
         self.tabla_primeros_siguientes.setHorizontalHeaderLabels(["No Terminal", "Primeros", "Siguientes"])
-        self.tabla_primeros_siguientes.horizontalHeader().setStretchLastSection(True)  # Ajustar ancho automático
+        self.tabla_primeros_siguientes.horizontalHeader().setStretchLastSection(True)
         
         layout.addWidget(self.tabla_primeros_siguientes)
         
-        # Botón para calcular
         self.boton_primeros_siguientes = QPushButton("Calcular Primeros y Siguientes", self)
         self.boton_primeros_siguientes.clicked.connect(self.calcular_primeros_siguientes)
         layout.addWidget(self.boton_primeros_siguientes)
@@ -132,19 +128,8 @@ class AnalizadorCodigo(QMainWindow):
         self.primeros_siguientes_tab = QWidget()
         self.primeros_siguientes_tab.setLayout(layout)
         self.tabs.addTab(self.primeros_siguientes_tab, "Primeros y Siguientes")
-    def generar_tabla_sintactica(self):
-        try:
-            # Obtener referencia al QTableWidget de la pestaña
-            tabla_qt = self.tabs.widget(5).findChild(QTableWidget)
-            
-            # Mostrar en la tabla gráfica
-            self.tabla_sintactica.mostrar_en_qtablewidget(tabla_qt)
-            
-            QMessageBox.information(self, "Tabla Sintáctica", "Tabla generada exitosamente!")
-            self.tabs.setCurrentIndex(5)
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error: {str(e)}")
-        # ------------------------- Funcionalidades principales -------------------------
+
+    # ------------------------- Funcionalidades principales -------------------------
     def mostrar_mensaje_compilacion(self):
         QMessageBox.information(self, "Compilar", "La compilación del código no es responsabilidad de esta parte del programa.")
 
@@ -174,11 +159,10 @@ class AnalizadorCodigo(QMainWindow):
             
             self.tabla_analisis.setRowCount(len(datos_palabras))
             for fila, (palabra, datos) in enumerate(datos_palabras.items()):
-                # Corregir paréntesis faltante en la línea siguiente
                 self.tabla_analisis.setItem(fila, 0, QTableWidgetItem("___" if palabra == "\t" else palabra))
                 self.tabla_analisis.setItem(fila, 1, QTableWidgetItem(datos["tipo"]))
                 self.tabla_analisis.setItem(fila, 2, QTableWidgetItem(datos["alias"]))
-                self.tabla_analisis.setItem(fila, 3, QTableWidgetItem(str(datos["apariciones"])))  # <-- Paréntesis cerrado
+                self.tabla_analisis.setItem(fila, 3, QTableWidgetItem(str(datos["apariciones"])))
                 
                 lineas_str = ", ".join([f"línea {k}({v})" for k, v in datos["lineas"].items()])
                 self.tabla_analisis.setItem(fila, 4, QTableWidgetItem(lineas_str))
@@ -190,67 +174,114 @@ class AnalizadorCodigo(QMainWindow):
     def cargar_gramatica(self):
         try:
             codigo = self.editor.toPlainText()
-            reglas_aplicadas = self.gramatica.obtener_reglas_aplicadas(codigo)
-            
-            if reglas_aplicadas:
-                self.gramatica_texto.setPlainText("\n".join(reglas_aplicadas))
-                QMessageBox.information(self, "Gramática", "Reglas aplicadas generadas exitosamente.")
-            else:
-                QMessageBox.warning(self, "Gramática", "No se encontraron reglas aplicables.")
-            
-            self.tabs.setCurrentIndex(3)
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error al cargar gramática: {str(e)}")
+            # LLAMAR AL NUEVO MÉTODO que devuelve la estructura
+            gramatica_activa = self.gramatica.obtener_gramatica_activa(codigo)
 
+            if not gramatica_activa:
+                self.gramatica_texto.setPlainText("No se activaron reglas de la gramática para el código ingresado.")
+                QMessageBox.warning(self, "Gramática", "No se encontraron reglas aplicables para este código.")
+                return # Salir si no hay gramática activa
+
+            # Formatear la gramática activa para mostrarla
+            texto_gramatica = "Gramática Activa para el Código:\n\n"
+            # Ordenar NTs para consistencia (opcional)
+            nts_ordenados = sorted(gramatica_activa.keys())
+
+            for nt in nts_ordenados:
+                producciones = gramatica_activa[nt]
+                # Formatear cada producción: ["Start", "A", "End"] -> "Start A End"
+                prods_formateadas = []
+                for prod_lista in producciones:
+                    # Manejar el caso epsilon: ["ε"] -> "ε"
+                    if prod_lista == ["ε"]:
+                        prods_formateadas.append("ε")
+                    else:
+                        prods_formateadas.append(" ".join(prod_lista))
+
+                # Unir las producciones con " | "
+                lado_derecho = " | ".join(prods_formateadas)
+                texto_gramatica += f"{nt} -> {lado_derecho}\n"
+
+            self.gramatica_texto.setPlainText(texto_gramatica)
+            QMessageBox.information(self, "Gramática", "Gramática activa generada exitosamente basada en el código.")
+            self.tabs.setCurrentIndex(3) # Asegúrate que 3 es el índice correcto
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error al cargar gramática activa: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+# --- Fin del método ---
+
+    # En Interfaz.py
     def calcular_primeros_siguientes(self):
         try:
-            # Obtener las reglas aplicadas del código
             codigo = self.editor.toPlainText()
-            reglas_aplicadas = self.gramatica.obtener_reglas_aplicadas(codigo)
-            
-            # Calcular primeros y siguientes basados en las reglas activas
-            primeros, siguientes = self.primeros_siguientes.calcular_primeros_siguientes(reglas_aplicadas)
-            
-            # Limpiar tabla existente
-            self.tabla_primeros_siguientes.setRowCount(0)
-            
-            # Orden preferido para mostrar los no terminales
-            orden_no_terminales = [
-                "S", "A", "A'", "B", "C", "D", "F", "G", 
-                "H", "I", "J", "K", "K'", "L", "L'", "M", 
-                "N", "N'", "OP", "Q", "R"
-            ]
-            
-            # Llenar la tabla solo con los no terminales activos
-            no_terminales_activos = set(self.primeros_siguientes.gramatica_activa.keys())
-            
-            for nt in orden_no_terminales:
-                if nt not in no_terminales_activos:
-                    continue
-                    
-                row_position = self.tabla_primeros_siguientes.rowCount()
-                self.tabla_primeros_siguientes.insertRow(row_position)
-                
-                # Obtener y formatear datos
-                pr = ", ".join(sorted(primeros.get(nt, set())))
-                sg = ", ".join(sorted(siguientes.get(nt, set())))
-                
-                # Añadir celdas
-                self.tabla_primeros_siguientes.setItem(row_position, 0, QTableWidgetItem(nt))
-                self.tabla_primeros_siguientes.setItem(row_position, 1, QTableWidgetItem(pr))
-                self.tabla_primeros_siguientes.setItem(row_position, 2, QTableWidgetItem(sg))
-            
-            # Ajustar el ancho de las columnas
+
+            # 1. Obtener la gramática activa basada en el código
+            gramatica_activa = self.gramatica.obtener_gramatica_activa(codigo)
+
+            if not gramatica_activa:
+                 QMessageBox.warning(self, "Advertencia", "No se detectaron suficientes elementos en el código para activar reglas de la gramática.")
+                 # Limpiar la tabla si se desea
+                 self.tabla_primeros_siguientes.setRowCount(0)
+                 return
+
+            # 2. Calcular Primeros y Siguientes para esa gramática activa
+            self.primeros_siguientes.calcular_para_gramatica(gramatica_activa)
+
+            # 3. Obtener los conjuntos formateados
+            primeros, siguientes = self.primeros_siguientes.obtener_primeros_siguientes_formateados()
+
+            # 4. Mostrar en la tabla (igual que antes)
+            self.tabla_primeros_siguientes.setRowCount(0) # Limpiar tabla
+            # Asegúrate que PrimerosSiguientes tiene este atributo o ajústalo
+            orden_interfaz = self.primeros_siguientes.no_terminales_interfaz_orden
+
+            for row, nt in enumerate(orden_interfaz):
+                self.tabla_primeros_siguientes.insertRow(row)
+                item_nt = QTableWidgetItem(nt)
+                # Usar .get(nt, "-") para manejar NTs no activos
+                item_pr = QTableWidgetItem(primeros.get(nt, "-"))
+                item_sg = QTableWidgetItem(siguientes.get(nt, "-"))
+
+                # Opcional: Alinear texto (necesitas importar Qt: from PyQt6.QtCore import Qt)
+                # alignment = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+                # item_nt.setTextAlignment(alignment)
+                # item_pr.setTextAlignment(alignment)
+                # item_sg.setTextAlignment(alignment)
+
+                self.tabla_primeros_siguientes.setItem(row, 0, item_nt)
+                self.tabla_primeros_siguientes.setItem(row, 1, item_pr)
+                self.tabla_primeros_siguientes.setItem(row, 2, item_sg)
+
+            # Ajustar columnas (necesitas importar QHeaderView: from PyQt6.QtWidgets import QHeaderView)
             self.tabla_primeros_siguientes.resizeColumnsToContents()
-            QMessageBox.information(self, "Éxito", "Tabla de Primeros y Siguientes generada correctamente!")
+            header = self.tabla_primeros_siguientes.horizontalHeader()
+            header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+            header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+
+            QMessageBox.information(self, "Éxito", "Tabla de Primeros y Siguientes generada basada en el código actual!")
+            # Asegúrate que el índice 4 corresponde a la pestaña de Primeros/Siguientes
             self.tabs.setCurrentIndex(4)
-            
+
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error al calcular Primeros y Siguientes: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error al calcular Primeros/Siguientes: {str(e)}")
+            import traceback
+            traceback.print_exc() # Ayuda a depurar viendo el error completo en consola
+
+# --- FIN DEL MÉTODO ---
+            
     def generar_tabla_sintactica(self):
         try:
-            # Usar la referencia directa al widget
+            # Obtener conjuntos necesarios
+            primeros, _ = self.primeros_siguientes.primeros, self.primeros_siguientes.siguientes
+            
+            # Generar y mostrar tabla
+            self.tabla_sintactica.construir_tabla(primeros)
             self.tabla_sintactica.mostrar_en_qtablewidget(self.tabla_sintactica_widget)
+            
             QMessageBox.information(self, "Tabla Sintáctica", "Tabla generada exitosamente!")
             self.tabs.setCurrentIndex(5)
         except Exception as e:
