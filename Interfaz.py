@@ -8,6 +8,7 @@ from gramatica import Gramatica
 from primeros_siguientes import PrimerosSiguientes
 from tabla_sintactica import TablaSintactica
 import re
+from analisis_lark import analizar_con_lark # <--- Importa la función
 
 class AnalizadorCodigo(QMainWindow):
     def __init__(self):
@@ -35,6 +36,7 @@ class AnalizadorCodigo(QMainWindow):
         self.inicializar_gramatica_tab()
         self.inicializar_primeros_siguientes_tab()
         self.inicializar_tabla_sintactica_tab()
+        self.inicializar_arbol_tab() # <--- Inicializa la nueva pestaña
 
     # ------------------------- Métodos de inicialización de pestañas -------------------------
     def inicializar_editor_tab(self):
@@ -47,14 +49,17 @@ class AnalizadorCodigo(QMainWindow):
         self.boton_compilar = QPushButton("Compilar", self)
         self.boton_analizar = QPushButton("Analizar", self)
         self.boton_vector = QPushButton("Vector", self)
+        self.boton_lark = QPushButton("Analizar con Lark", self) # <--- Nuevo botón
 
         self.boton_compilar.clicked.connect(self.mostrar_mensaje_compilacion)
         self.boton_analizar.clicked.connect(self.analizar_codigo)
         self.boton_vector.clicked.connect(self.generar_vector)
+        self.boton_lark.clicked.connect(self.analizar_con_lark_interfaz) # <--- Conecta el botón a la función
 
         botones_layout.addWidget(self.boton_compilar)
         botones_layout.addWidget(self.boton_analizar)
         botones_layout.addWidget(self.boton_vector)
+        botones_layout.addWidget(self.boton_lark) # <--- Agrega el botón al layout
 
         layout.addLayout(botones_layout)
         self.editor_tab = QWidget()
@@ -129,6 +134,17 @@ class AnalizadorCodigo(QMainWindow):
         self.primeros_siguientes_tab = QWidget()
         self.primeros_siguientes_tab.setLayout(layout)
         self.tabs.addTab(self.primeros_siguientes_tab, "Primeros y Siguientes")
+        
+    def inicializar_arbol_tab(self):
+        layout = QVBoxLayout()
+        self.arbol_texto = QTextEdit(self)
+        self.arbol_texto.setPlaceholderText("Aquí aparecerá la representación del árbol...")
+        self.arbol_texto.setReadOnly(True)
+        layout.addWidget(self.arbol_texto)
+
+        self.arbol_tab = QWidget()
+        self.arbol_tab.setLayout(layout)
+        self.tabs.addTab(self.arbol_tab, "Árbol")
 
     # ------------------------- Funcionalidades principales -------------------------
     def mostrar_mensaje_compilacion(self):
@@ -308,3 +324,30 @@ class AnalizadorCodigo(QMainWindow):
             QMessageBox.critical(self, "Error", f"Error al generar la tabla sintáctica: {str(e)}")
             import traceback
             traceback.print_exc()
+
+    def analizar_con_lark_interfaz(self):
+        try:
+            # Obtener el código del editor
+            codigo = self.editor.toPlainText()
+
+            # Analizar el código con Lark
+            ast, resultado = analizar_con_lark(codigo)
+
+            # Mostrar el resultado en la pestaña de análisis
+            self.tabla_analisis.setRowCount(1) # Limpia la tabla de analisis
+            self.tabla_analisis.setColumnCount(1) # 
+            item = QTableWidgetItem(resultado)
+            self.tabla_analisis.setItem(0, 0, item)
+
+            # Cambiar a la pestaña de análisis para mostrar el resultado
+            self.tabs.setCurrentIndex(1)
+            
+            # Mostrar el árbol en la pestaña de árbol
+            if ast:
+                self.arbol_texto.setPlainText(str(ast))
+                self.tabs.setCurrentIndex(6)  # Cambiar a la pestaña "Árbol"
+            else:
+                self.arbol_texto.setPlainText("No se pudo generar el árbol.")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error al analizar con Lark: {str(e)}")
